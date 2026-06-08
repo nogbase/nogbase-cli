@@ -72,3 +72,39 @@ New installs use `~/.nogbase/config.yaml`. Existing legacy installs under
   platform builds during the migration window.
 
 Use `--json` in scripts and agent workflows when the command supports structured output.
+
+## Maintainer Notes
+
+This repository is distribution-only.
+
+- Do not add Nogbase backend or CLI source code here.
+- Do not commit release binaries to git.
+- Public binaries are published as GitHub Release assets.
+- Installer scripts download from `nogbase/nogbase-cli` releases by default.
+- The private `nogbase/nogbase-core` repository owns the source and release workflow.
+
+Release updates are tag-driven from `nogbase/nogbase-core`:
+
+1. Update CLI source in private core under `backend/cmd/nogbase/`.
+2. Commit and push the source/docs changes in private core.
+3. Tag the intended core commit with `nogbase-cli-v<version>`, for example:
+
+```bash
+git tag nogbase-cli-v0.1.1
+git push org nogbase-cli-v0.1.1
+```
+
+4. The private core workflow builds Linux, macOS, and Windows archives.
+5. The workflow publishes checksummed assets to this public repo's GitHub Releases.
+6. Verify the public installer:
+
+```bash
+install_root="$(mktemp -d /tmp/nogbase-cli-install.XXXXXX)"
+curl -fsSL https://raw.githubusercontent.com/nogbase/nogbase-cli/main/install.sh \
+  | NOGBASE_CLI_INSTALL_DIR="${install_root}/bin" sh
+"${install_root}/bin/nogbase" version
+"${install_root}/bin/ngb" --help >/tmp/nogbase-cli-help.txt
+```
+
+If the public installer behavior changes, update both this repository's installer scripts and the
+private core copies under `scripts/install-nogbase-cli.*`.
