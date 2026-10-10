@@ -1,9 +1,7 @@
 # Nogbase CLI
 
-Public binary distribution for the Nogbase CLI.
-
-The Nogbase CLI source and build automation live in the private `nogbase/nogbase-core`
-repository. This public repository contains installer scripts and GitHub Release assets only.
+The Nogbase CLI lets you, your scripts and your coding agents work with your Nogbase workspace
+from a terminal. Release binaries are checksummed and published on GitHub Releases.
 
 ## Install
 
@@ -15,11 +13,11 @@ nogbase --help
 ngb --help
 ```
 
-Linux and macOS with a pinned version or custom install directory:
+Linux and macOS with a specific version or custom install directory:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/nogbase/nogbase-cli/main/install.sh \
-  | NOGBASE_CLI_VERSION=0.1.0 NOGBASE_CLI_INSTALL_DIR="$HOME/.local/bin" sh
+  | NOGBASE_CLI_VERSION=0.2.0 NOGBASE_CLI_INSTALL_DIR="$HOME/.local/bin" sh
 ```
 
 Windows PowerShell:
@@ -30,19 +28,17 @@ nogbase --help
 ngb --help
 ```
 
-Windows PowerShell with a pinned version or custom install directory:
+Windows PowerShell with a specific version or custom install directory:
 
 ```powershell
 $installer = iwr -UseBasicParsing https://raw.githubusercontent.com/nogbase/nogbase-cli/main/install.ps1
-& ([scriptblock]::Create($installer.Content)) -Version "0.1.0" -InstallDir "$HOME\AppData\Local\Nogbase\bin"
+& ([scriptblock]::Create($installer.Content)) -Version "0.2.0" -InstallDir "$HOME\AppData\Local\Nogbase\bin"
 ```
 
-## Manual Install
-
-Linux amd64 example:
+Manual Linux binary installation from GitHub Releases:
 
 ```bash
-VERSION=0.1.0
+VERSION=0.2.0
 curl -LO "https://github.com/nogbase/nogbase-cli/releases/download/nogbase-cli-v${VERSION}/nogbase_${VERSION}_linux_amd64.tar.gz"
 curl -LO "https://github.com/nogbase/nogbase-cli/releases/download/nogbase-cli-v${VERSION}/nogbase_${VERSION}_linux_amd64.tar.gz.sha256"
 sha256sum -c "nogbase_${VERSION}_linux_amd64.tar.gz.sha256"
@@ -54,57 +50,41 @@ install -m 0755 "nogbase_${VERSION}_linux_amd64/ngb" "$HOME/.local/bin/ngb"
 
 ## Configure
 
+Release builds connect to `https://api.nogbase.ae`. Start with:
+
 ```bash
-nogbase profile add sandbox --api-url https://beta.nogbase.ae
-nogbase profile use sandbox
-nogbase login --api-key "$NOGBASE_API_KEY"
+nogbase login            # opens your browser; MFA and workspace choice supported
+nogbase status           # shows who you are and which workspace
+```
+
+`nogbase login` opens Nogbase sign-in in your browser. Multi-factor authentication and the
+workspace choice happen there, and the CLI saves a session that it refreshes on its own. Browser
+sign-in needs CLI 0.2.0 or later; older builds support only `-u`/`-p` and `--api-key`.
+
+- `nogbase login --no-browser` prints the sign-in link instead of opening a browser.
+- On a machine without a browser (SSH, servers, agent sandboxes) `nogbase login` prints a link and a
+  code to approve on any device; `--device` forces this.
+- `nogbase login --password-prompt` (or `-u` and `-p`) signs in with a username and password.
+  `-p` leaves the password in your shell history and process list; prefer `--password-prompt`.
+- `nogbase logout` signs out and clears the saved session.
+
+CI and servers use a workspace API key instead of a browser session:
+
+```bash
+nogbase login --api-key "$NOGBASE_API_KEY"   # CI and servers
 nogbase status --json
 ```
 
-New installs use `~/.nogbase/config.yaml`. Existing legacy installs under
-`~/.edget/config.yaml` continue to work during the migration window.
+When `NOGBASE_API_KEY` is set, `nogbase login` uses that key and does not open the browser.
+
+Coding agents that run on your machine should ask you to run `nogbase login` once and then use
+that session. Use a workspace API key only for unattended runs.
+
+The CLI keeps its configuration in `~/.nogbase/config.yaml`.
 
 ## Command Names
 
 - `nogbase` is the canonical command.
 - `ngb` is the short alias.
-- `edget` is the former command and is kept only as a temporary compatibility shim in private
-  platform builds during the migration window.
 
-Use `--json` in scripts and agent workflows when the command supports structured output.
-
-## Maintainer Notes
-
-This repository is distribution-only.
-
-- Do not add Nogbase backend or CLI source code here.
-- Do not commit release binaries to git.
-- Public binaries are published as GitHub Release assets.
-- Installer scripts download from `nogbase/nogbase-cli` releases by default.
-- The private `nogbase/nogbase-core` repository owns the source and release workflow.
-
-Release updates are tag-driven from `nogbase/nogbase-core`:
-
-1. Update CLI source in private core under `backend/cmd/nogbase/`.
-2. Commit and push the source/docs changes in private core.
-3. Tag the intended core commit with `nogbase-cli-v<version>`, for example:
-
-```bash
-git tag nogbase-cli-v0.1.1
-git push org nogbase-cli-v0.1.1
-```
-
-4. The private core workflow builds Linux, macOS, and Windows archives.
-5. The workflow publishes checksummed assets to this public repo's GitHub Releases.
-6. Verify the public installer:
-
-```bash
-install_root="$(mktemp -d /tmp/nogbase-cli-install.XXXXXX)"
-curl -fsSL https://raw.githubusercontent.com/nogbase/nogbase-cli/main/install.sh \
-  | NOGBASE_CLI_INSTALL_DIR="${install_root}/bin" sh
-"${install_root}/bin/nogbase" version
-"${install_root}/bin/ngb" --help >/tmp/nogbase-cli-help.txt
-```
-
-If the public installer behavior changes, update both this repository's installer scripts and the
-private core copies under `scripts/install-nogbase-cli.*`.
+Use `--json` in scripts and agent workflows when the command supports structured output. Some operational commands are text-only; check command help before parsing output.
