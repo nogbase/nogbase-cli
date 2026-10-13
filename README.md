@@ -82,6 +82,46 @@ that session. Use a workspace API key only for unattended runs.
 
 The CLI keeps its configuration in `~/.nogbase/config.yaml`.
 
+## Call the API directly
+
+`nogbase api` calls any Nogbase v1 endpoint with the session from `nogbase login`
+(or your API key), against the API address saved in your profile. You never
+handle a token.
+
+```bash
+nogbase api GET /v1/schemas
+nogbase api GET "/v1/collections/leads?limit=20"
+nogbase api GET "/v1/collections/leads?limit=20&after=<meta.nextCursor>"
+nogbase api POST /v1/collections/leads --data '{"name":"Sara"}'
+nogbase api PUT /v1/collections/leads/<id> --data @lead.json --if-match 3
+```
+
+- Writes always send an `Idempotency-Key`. If you don't pass `--idempotency-key`,
+  the CLI prints the one it generated to stderr; pass it back to repeat the same request.
+  Endpoints that support idempotency (collection writes do) then return the
+  stored result instead of writing twice. After a 412 version conflict, re-read
+  the record and send the corrected write with a new key.
+- Collection lists return `meta.nextCursor`; pass it as `after` for the next page.
+- `--include` prints the HTTP status and headers. A non-2xx response (including
+  a redirect, which the CLI never follows) prints the body and exits with code 3.
+- URL-encode query values (`%20`, `%2C`); the CLI sends the query as given.
+- Market scope works as in the data commands: `--country AE` (or `all`) sets it.
+  Without `--country`, a signed-in session sends your saved market
+  (`nogbase market use <country>`) and an API key sends `all`.
+- To call another environment, switch profiles (`nogbase profile use <name>`).
+  `nogbase api` refuses `--api-url`, `NOGBASE_API_URL` and `--insecure`, so your
+  sign-in is only ever sent to the address it was saved with. It still honours
+  `--profile`/`NOGBASE_PROFILE`, `--entity`/`NOGBASE_ENTITY` and
+  `--api-key`/`NOGBASE_API_KEY` as every command does: they choose the saved
+  profile, the workspace or the key, and the server checks access as for any
+  other call (a login session acts only in its own workspace).
+- Agent API keys can group their changes into a run: open one with
+  `nogbase api POST /v1/agent-runs`, pass its id with `--run-id`, and close it with
+  `nogbase api PATCH /v1/agent-runs/<runId>/close`. A signed-in session does not
+  open runs; its changes are recorded as yours.
+
+The endpoints are described at https://api.nogbase.ae/llms.txt.
+
 ## Command Names
 
 - `nogbase` is the canonical command.
